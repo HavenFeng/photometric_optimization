@@ -9,7 +9,7 @@ The codes and demos will be released soon.
 ## Creating FLAME texture space with in-the-wild images
 **The FLAME texture space can be acquired from the [FLAME project website](https://flame.is.tue.mpg.de).**
 <p align="left"> 
-<img src="flame_texture.png" width="100"/>
+<img src="flame_texture.png" width="150"/>
 </p>
 <p align="left">Image from the [3DMM survey paper]() <p align="left">
 
