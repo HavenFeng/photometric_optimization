@@ -4,7 +4,7 @@ This repository includes
 1. Optimize the FLAME model to an in-the-wild face image and corresponding 2D landmarks.  
 2. Optimize to get facial albedo textures with in-the-wild face images and corresponding 3D reconstructions.\
 \
-The codes and demos will be released soon.
+**The codes and demos will be released soon.**
 
 ## Creating FLAME texture space with in-the-wild images
 **The FLAME texture space can be acquired from the [FLAME project website](https://flame.is.tue.mpg.de).**
@@ -13,7 +13,8 @@ The codes and demos will be released soon.
 </p>
 <p align="left">Image from the [3DMM survey paper]() <p align="left">
 
-Given that the widely used facial albedo space of [Basel Face Model(BFM)](https://faces.dmi.unibas.ch/bfm/index.php?nav=1-0&id=basel_face_model) is only built with 200 subjects, we want to build a texture space which covers a large range of ethnicity from in-the-wild data. Therefore, we pre-select 1500 images from [FFHQ dataset](https://github.com/NVlabs/ffhq-dataset) then use this repo to optmize the FLAME model to get the accurate 3D reconstruction and obtain the corresponding albedo textures(the illuminance is estimated and removed, the initial albedo is from BFM). The FLAME texture space is a PCA space of these 1500 albedo textures.
+Given that the widely used facial albedo space of [Basel Face Model(BFM)](https://faces.dmi.unibas.ch/bfm/index.php?nav=1-0&id=basel_face_model) is only built with 200 subjects, we want to build a texture space which covers a large range of ethnicity from in-the-wild data. Therefore, we pre-select 1500 images from [FFHQ dataset](https://github.com/NVlabs/ffhq-dataset) then use this repo to optmize the FLAME model to get the accurate 3D reconstruction and obtain the corresponding albedo textures(the illuminance is estimated and removed, the initial albedo is from BFM).\
+The FLAME texture space is a PCA space of these 1500 albedo textures.
 
 ## Notes
 We use the FLAME.py from [FLAME_PyTorch](https://github.com/soubhiksanyal/FLAME_PyTorch), the renderer.py is heavily adapted from [DECA](https://github.com/YadiraF/DECA)
