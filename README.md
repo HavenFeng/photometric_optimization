@@ -29,7 +29,7 @@ This repository
 
 ## Build FLAME texture space from in-the-wild images
 
-The goal is to build a texture space from in-the-wild images in order to cover large lange of ethnicities. We therefore randomly select 1500 images from the [FFHQ dataset](https://github.com/NVlabs/ffhq-dataset) in order to build a texture space. This is done in following steps
+The goal is to build a texture space from in-the-wild images in order to cover large lange of ethnicities, age groups, etc. We therefore randomly select 1500 images from the [FFHQ dataset](https://github.com/NVlabs/ffhq-dataset) in order to build a texture space. This is done in following steps
 
 ***1. Initialization***
 
