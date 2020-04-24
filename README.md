@@ -1,9 +1,12 @@
-# photometric_optimization
-Photometric optimization in PyTorch for getting head pose, shape, expression, albedo and lighting.\
-This repository includes
-1. Optimize the FLAME model to an in-the-wild face image and corresponding 2D landmarks.  
-2. Optimize to get facial albedo textures with in-the-wild face images and corresponding 3D reconstructions.\
-\
+# Photometric FLAME Fitting
+
+This repository provides an analysis-by-synthesis framework to fit a textured [FLAME](http://flame.is.tue.mpg.de/) model to an image. FLAME is a lightweight generic 3D head model learned from over 33,000 head scans, but it does not come with an appearance space (see the [scientific publication](https://ps.is.tuebingen.mpg.de/uploads_file/attachment/attachment/400/paper.pdf) for details). 
+
+This repository 
+1) describes how to build a texture space for FLAME from in-the-wild images, and provides
+2) code to fit a textured FLAME model to in-the-wild images, optimizing for FLAME's shape, pose, expression, appearance, and lighting, and
+3) code to optimize for the FLAME texture to match an in-the-wild image. 
+
 **The codes and demos will be released soon.**
 
 ## Creating FLAME texture space with in-the-wild images
