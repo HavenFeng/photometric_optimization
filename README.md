@@ -5,10 +5,10 @@ This repository includes
 2. Optimize to get facial albedo textures with in-the-wild face images and corresponding 3D reconstructions.
 The codes and demos will be released soon.
 
-## Texture optimization on in-the-wild images
-**We use this code to create the FLAME texture model, which can be acquired from the [FLAME project website](https://flame.is.tue.mpg.de).**\\
+## Creating FLAME texture space with in-the-wild images
+**We use this code to create the FLAME texture model, which can be acquired from the [FLAME project website](https://flame.is.tue.mpg.de).**\
 <p align="left"> 
-<img src="test_images/results/teaser.gif">
+<img src="flame_texture.png">
 </p>
 <p align="left">Image from the [3DMM survey paper]() <p align="left">
 
