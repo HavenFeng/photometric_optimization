@@ -4,7 +4,7 @@ This repository provides an analysis-by-synthesis framework to fit a textured [F
 
 This repository 
 1) describes how to build a texture space for FLAME from in-the-wild images, and provides
-2) code to fit a textured FLAME model to in-the-wild images, optimizing for FLAME's shape, pose, expression, appearance, and lighting, and
+2) code to fit a textured FLAME model to in-the-wild images, optimizing for FLAME's parameters, appearance, and lighting, and
 3) code to optimize for the FLAME texture to match an in-the-wild image. 
 
 **The codes and demos will be released soon.**
