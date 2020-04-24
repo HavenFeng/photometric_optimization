@@ -25,7 +25,7 @@ This repository
 
 **The FLAME model and the texture space can be downloaded from the [FLAME project website](https://flame.is.tue.mpg.de). You need to sign up and agree to the license for access.**
 
-**The codes and demos will be released soon.**
+**The demos will be released soon.**
 
 ## Build FLAME texture space from in-the-wild images
 
