@@ -13,7 +13,7 @@ This repository includes
 </p>
 <p align="left">Image from the [3DMM survey paper]() <p align="left">
 
-Given that the widely used facial albedo space of [Basel Face Model(BFM)](https://faces.dmi.unibas.ch/bfm/index.php?nav=1-0&id=basel_face_model) is only built with 200 subjects, we want to build a texture space which covers a large range of ethnicity from in-the-wild data. Therefore, we pre-select 1500 images from [FFHQ dataset](https://github.com/NVlabs/ffhq-dataset) then use this repo to optmize the FLAME model to get the accurate 3D reconstruction and obtain the corresponding albedo textures(the illuminance is estimated and removed, the initial albedo is from BFM).\
+Given that the widely used facial albedo space of [Basel Face Model(BFM)](https://faces.dmi.unibas.ch/bfm/index.php?nav=1-0&id=basel_face_model) is only built with 200 subjects, we want to build a texture space which covers a large range of ethnicity from in-the-wild data. Therefore, we pre-select 1500 images from [FFHQ dataset](https://github.com/NVlabs/ffhq-dataset) then use this repo to optmize the FLAME model to get the accurate 3D reconstruction, and further obtain the corresponding albedo textures(the illuminance is estimated and removed, the initial albedo is from BFM).\
 The FLAME texture space is a PCA space of these 1500 albedo textures.
 
 ## Notes
