@@ -3,6 +3,7 @@ Photometric optimization in PyTorch for getting head pose, shape, expression, al
 This repository includes
 1. Optimize the FLAME model to an in-the-wild face image and corresponding 2D landmarks.  
 2. Optimize to get facial albedo textures with in-the-wild face images and corresponding 3D reconstructions.\
+\
 The codes and demos will be released soon.
 
 ## Creating FLAME texture space with in-the-wild images
