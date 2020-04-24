@@ -6,9 +6,9 @@ This repository includes
 The codes and demos will be released soon.
 
 ## Creating FLAME texture space with in-the-wild images
-**We use this code to create the FLAME texture model, which can be acquired from the [FLAME project website](https://flame.is.tue.mpg.de).**\
+**We use this code to create the FLAME texture model, which can be acquired from the [FLAME project website](https://flame.is.tue.mpg.de).**
 <p align="left"> 
-<img src="flame_texture.png">
+<img src="flame_texture.png" width="200"/>
 </p>
 <p align="left">Image from the [3DMM survey paper]() <p align="left">
 
