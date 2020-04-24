@@ -33,22 +33,35 @@ The goal is to build a texture space from in-the-wild images in order to cover l
 
 ***1. Initialization***
 
+Building a texture space from in-the-wild images is a chicken-and-egg problem. Given a texture space, it can be used in an analysis-by-synthesis fashion to fit the 3D model to images, where these fits then can be used to build a texture space. To get an initial textur space, we fit FLAME to the [Basel Face Model (BFM)](https://faces.dmi.unibas.ch/bfm/index.php?nav=1-0&id=basel_face_model) template, and project the BFM vertex colors onto the FLAME mesh, to get an initial texture basis.
+
 ***2. Model fitting***
+
+We then fit FLAME to the FFHQ images, optimizing for the FLAME shape, pose, and expression parameters, the parameters of the  initial texture space, parameters for Spherical Harmonics (SH) lighting (we optimize for 9 SH coefficient only, shared across all three color channels), and a texture offset to capture texture details deviating from the initial texture space. The fitting minimizes a landmark loss, a photometric loss, and diverse regularizers for shape, pose, expression, appearance, and the texture offset. 
+
+The landmark loss minimizes the difference between the landmarks projected from the model's surface, and predicted 2D landmarks (predicted using the [FAN landmark predictor](https://github.com/1adrianb/face-alignment)). The photometric loss is optimized for the skin region only (provided by the [face segmentation network](https://github.com/YuvalNirkin/face_segmentation)) to gain robustness to partial occlusions. See the provided code for details how to fit a textured FLAME model to an image. 
 
 ***3. Texture completion***
 
+After fitting, the computed texture offsets capture for each image the facial appearance of the non-occluded skin region. To complete the texture maps, we train an [inpainting network](https://github.com/shepnerd/inpainting_gmcnn) (across all texture maps) supervisely by adding random strokes (i.e. strokes of random size and location) in the visible face region and learning to inpaint these strokes. Once trained, we inpaint all missing regions with the resulting inpainting network.
+
 ***4. Texture space computation***
 
+After completing all texture maps, we use principal component analysis (PCA) to compute a texture space. 
 
-Given that the widely used facial albedo space of [Basel Face Model(BFM)](https://faces.dmi.unibas.ch/bfm/index.php?nav=1-0&id=basel_face_model) is only built with 200 subjects, we want to build a texture space which covers a large range of ethnicity from in-the-wild data. Therefore, we pre-select 1500 images from [FFHQ dataset](https://github.com/NVlabs/ffhq-dataset) then use this repo to optmize the FLAME model to get the accurate 3D reconstruction, and further obtain the corresponding albedo textures(the illuminance is estimated and removed, the initial albedo is from BFM).\
-The FLAME texture space is a PCA space of these 1500 albedo textures.
+## Demos
+
+***Coming soon***
 
 ## Notes
-We use the FLAME.py from [FLAME_PyTorch](https://github.com/soubhiksanyal/FLAME_PyTorch), the renderer.py is heavily adapted from [DECA](https://github.com/YadiraF/DECA)
-
+We use the FLAME.py from [FLAME_PyTorch](https://github.com/soubhiksanyal/FLAME_PyTorch), the renderer.py is adapted from [DECA](https://github.com/YadiraF/DECA).
 
 ## License
-This code is available for non-commercial scientific research purposes as defined in the [LICENSE](https://github.com/YadiraF/DECA/blob/master/LICENSE) file.
+The code is available for non-commercial scientific research purposes. The texture model is available under [Creative Commons BY-NC-SA 4.0 license](https://creativecommons.org/licenses/by-nc-sa/4.0/). For details see the [Texture license](https://flame.is.tue.mpg.de/texturelicense).
+
+## Citation
+
+When using this code or the texture model in a scientific publication, please cite **this GitHub repository** and the **FFHQ dataset**. When using the FLAME geometry model, please cite the model (you find the up-to-date bibtex [here](https://flame.is.tue.mpg.de/)).
 
 ## Contact
-Please feel free to contact haiwen.feng@tuebingen.mpg.de for any related issue
+For questions regarding the provided fitting code please contact haiwen.feng@tuebingen.mpg.de, for FLAME related questions please contact flame@tuebingen.mpg.de.
