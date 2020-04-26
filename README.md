@@ -33,21 +33,21 @@ The goal is to build a texture space from in-the-wild images in order to cover l
 
 ***1. Initialization***
 
-Building a texture space from in-the-wild images is a chicken-and-egg problem. Given a texture space, it can be used in an analysis-by-synthesis fashion to fit the 3D model to images, where these fits then can be used to build a texture space. To get an initial textur space, we fit FLAME to the [Basel Face Model (BFM)](https://faces.dmi.unibas.ch/bfm/index.php?nav=1-0&id=basel_face_model) template, and project the BFM vertex colors onto the FLAME mesh, to get an initial texture basis.
+Building a texture space from in-the-wild images is a chicken-and-egg problem. Given a texture space, it can be used in an analysis-by-synthesis fashion to fit the 3D model to images, where these fits then can be used to build a texture space. To get an initial texture space, we fit FLAME to the [Basel Face Model (BFM)](https://faces.dmi.unibas.ch/bfm/index.php?nav=1-0&id=basel_face_model) template, and project the BFM vertex colors onto the FLAME mesh, to get an initial texture basis.
 
 ***2. Model fitting***
 
-We then fit FLAME to the FFHQ images, optimizing for the FLAME shape, pose, and expression parameters, the parameters of the  initial texture space, parameters for Spherical Harmonics (SH) lighting (we optimize for 9 SH coefficient only, shared across all three color channels), and a texture offset to capture texture details deviating from the initial texture space. The fitting minimizes a landmark loss, a photometric loss, and diverse regularizers for shape, pose, expression, appearance, and the texture offset. 
+We then fit FLAME to the FFHQ images, optimizing for the FLAME shape, pose, and expression parameters, the parameters of the initial texture space, the parameters for Spherical Harmonics (SH) lighting (we optimize for 9 SH coefficient only, shared across all three color channels), and a texture offset to capture texture details deviating from the initial texture space. The fitting minimizes a landmark loss, a photometric loss, and diverse regularizers for shape, pose, expression, appearance, and the texture offset. 
 
-The landmark loss minimizes the difference between the landmarks projected from the model's surface, and predicted 2D landmarks (predicted using the [FAN landmark predictor](https://github.com/1adrianb/face-alignment)). The photometric loss is optimized for the skin region only (provided by the [face segmentation network](https://github.com/YuvalNirkin/face_segmentation)) to gain robustness to partial occlusions. See the provided code for details how to fit a textured FLAME model to an image. 
+The landmark loss minimizes the difference between the landmarks projected from the face model's surface, and predicted 2D landmarks (predicted using the [FAN landmark predictor](https://github.com/1adrianb/face-alignment)). The photometric loss is optimized for the skin region only (provided by the [face segmentation network](https://github.com/YuvalNirkin/face_segmentation)) to gain robustness to partial occlusions. See the provided code for details how to fit a textured FLAME model to an image. 
 
 ***3. Texture completion***
 
-After fitting, the computed texture offsets capture for each image the facial appearance of the non-occluded skin region. To complete the texture maps, we train an [inpainting network](https://github.com/shepnerd/inpainting_gmcnn) (across all texture maps) supervisely by adding random strokes (i.e. strokes of random size and location) in the visible face region and learning to inpaint these strokes. Once trained, we inpaint all missing regions with the resulting inpainting network.
+After fitting, the computed texture offsets capture for each image the facial appearance of the non-occluded skin region. To complete the texture maps, we train an inpainting network adapted from [GMCNN](https://github.com/shepnerd/inpainting_gmcnn) (across all texture maps) supervisely by adding random strokes (i.e. strokes of random size and location) in the visible face region(visibility obtained from the fitted reconstruction) and learning to inpaint these strokes. Once trained, we inpaint all missing regions with the resulting inpainting network.
 
 ***4. Texture space computation***
 
-After completing all texture maps, we use principal component analysis (PCA) to compute a texture space. 
+After completing these 1500 texture maps, we use principal component analysis (PCA) to compute a texture space. 
 
 ## Demos
 
