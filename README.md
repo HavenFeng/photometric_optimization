@@ -51,7 +51,9 @@ After completing these 1500 texture maps, we use principal component analysis (P
 
 ## Demos
 
-***Coming soon***
+A simple demo to sample the texture space can be found [here](https://github.com/TimoBolkart/TF_FLAME).
+
+***More advance deomos are coming soon***
 
 ## License
 The code is available for non-commercial scientific research purposes. The texture model is available under [Creative Commons BY-NC-SA 4.0 license](https://creativecommons.org/licenses/by-nc-sa/4.0/). For details see the [Texture license](https://flame.is.tue.mpg.de/texturelicense).
