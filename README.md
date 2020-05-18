@@ -59,7 +59,8 @@ A simple demo to sample the texture space can be found [here](https://github.com
 The code is available for non-commercial scientific research purposes. The texture model is available under [Creative Commons BY-NC-SA 4.0 license](https://creativecommons.org/licenses/by-nc-sa/4.0/). For details see the [Texture license](https://flame.is.tue.mpg.de/texturelicense).
 
 ## Notes
-We use the FLAME.py from [FLAME_PyTorch](https://github.com/soubhiksanyal/FLAME_PyTorch), the renderer.py is adapted from [DECA](https://github.com/YadiraF/DECA).
+We use the FLAME.py from [FLAME_PyTorch](https://github.com/soubhiksanyal/FLAME_PyTorch), 
+#the renderer.py is adapted from [DECA](https://github.com/YadiraF/DECA).
 
 ## Citation
 
