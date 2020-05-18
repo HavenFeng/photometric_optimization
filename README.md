@@ -60,7 +60,6 @@ The code is available for non-commercial scientific research purposes. The textu
 
 ## Notes
 We use the FLAME.py from [FLAME_PyTorch](https://github.com/soubhiksanyal/FLAME_PyTorch), 
-#the renderer.py is adapted from [DECA](https://github.com/YadiraF/DECA).
 
 ## Citation
 
