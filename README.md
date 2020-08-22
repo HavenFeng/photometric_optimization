@@ -50,10 +50,15 @@ After fitting, the computed texture offsets capture for each image the facial ap
 After completing these 1500 texture maps, we use principal component analysis (PCA) to compute a texture space. 
 
 ## Demos
+The single image photometric fitting demo is implemented and tested with PyTorch1.5 and PyTorch3D0.2 in Python3.8.3. 
 
-A simple demo to sample the texture space can be found [here](https://github.com/TimoBolkart/TF_FLAME).
+Run this demo with specified FFHQ image name and computing device,
+```
+python photometric_fitting.py 00000 cuda
+```
 
-***More advanced demos are coming soon***
+Another simple demo to sample the texture space can be found [here](https://github.com/TimoBolkart/TF_FLAME).
+
 
 ## License
 The code is available for non-commercial scientific research purposes. The texture model is available under [Creative Commons BY-NC-SA 4.0 license](https://creativecommons.org/licenses/by-nc-sa/4.0/). For details see the [Texture license](https://flame.is.tue.mpg.de/texturelicense).
