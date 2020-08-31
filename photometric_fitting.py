@@ -25,7 +25,7 @@ class PhotometricFitting(object):
         self.device = device
         #
         self.flame = FLAME(self.config).to(self.device)
-        self.bfmtex = FLAMETex(self.config).to(self.device)
+        self.flametex = FLAMETex(self.config).to(self.device)
 
         self._setup_renderer()
 
@@ -116,7 +116,7 @@ class PhotometricFitting(object):
             losses['pose_reg'] = (torch.sum(pose ** 2) / 2) * config.w_pose_reg
 
             ## render
-            albedos = self.bfmtex(tex)
+            albedos = self.flametex(tex) / 255.
             ops = self.render(vertices, trans_vertices, albedos, lights)
             predicted_images = ops['images']
             losses['photometric_texture'] = (image_masks * (ops['images'] - images).abs()).mean() * config.w_pho
@@ -221,10 +221,9 @@ if __name__ == '__main__':
     device_name = str(sys.argv[2])
     config = {
         # FLAME
-        'flame_model_path': './data/model.pkl',  # acquire it from FLAME project page
+        'flame_model_path': './data/generic_model.pkl',  # acquire it from FLAME project page
         'flame_lmk_embedding_path': './data/landmark_embedding.npy',
-        'tex_mean_path': './data/texture_mean_image_completed.npy',  # acquire it from FLAME project page
-        'tex_basis_path': './data/texture_basis_images_completed.npy',  # acquire it from FLAME project page
+        'tex_space_path': './data/FLAME_texture.npz',  # acquire it from FLAME project page
         'camera_params': 3,
         'shape_params': 100,
         'expression_params': 50,
