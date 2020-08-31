@@ -225,8 +225,9 @@ class FLAMETex(nn.Module):
     def __init__(self, config):
         super(FLAMETex, self).__init__()
         tex_params = config.tex_params
-        texture_mean = np.load(config.tex_mean_path)
-        texture_basis = np.load(config.tex_basis_path)
+        tex_space = np.load(config.tex_space_path)
+        texture_mean = tex_space['mean'].reshape(1, -1)
+        texture_basis = tex_space['tex_dir'].reshape(-1, 200)
         num_components = texture_basis.shape[1]
         texture_mean = torch.from_numpy(texture_mean).float()[None,...]
         texture_basis = torch.from_numpy(texture_basis[:,:tex_params]).float()[None,...]
