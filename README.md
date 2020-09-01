@@ -50,7 +50,7 @@ After fitting, the computed texture offsets capture for each image the facial ap
 After completing these 1500 texture maps, we use principal component analysis (PCA) to compute a texture space. 
 
 ## Demos
-The single image photometric fitting demo is implemented and tested with PyTorch 1.5 and PyTorch3D 0.2 in Python 3.8.3. 
+The single image photometric fitting demo is implemented and tested with PyTorch 1.5 and PyTorch3D 0.2 in Python 3.8.3 with conda environment. ATTENTION: The pip and conda packages of PyTorch3D have different dependencies, please follow their installation guide.
 
 Run this demo with specified FFHQ image name and computing device,
 ```
