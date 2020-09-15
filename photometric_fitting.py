@@ -153,11 +153,13 @@ class PhotometricFitting(object):
                 shape_images = self.render.render_shape(vertices, trans_vertices, images)
                 grids['shape'] = torchvision.utils.make_grid(
                     F.interpolate(shape_images[visind], [224, 224])).detach().float().cpu()
-                # grids['tex'] = torchvision.utils.make_grid(F.interpolate(albedos[visind], [224, 224])).detach().cpu()
 
+
+                # grids['tex'] = torchvision.utils.make_grid(F.interpolate(albedos[visind], [224, 224])).detach().cpu()
                 grid = torch.cat(list(grids.values()), 1)
                 grid_image = (grid.numpy().transpose(1, 2, 0).copy() * 255)[:, :, [2, 1, 0]]
                 grid_image = np.minimum(np.maximum(grid_image, 0), 255).astype(np.uint8)
+
                 cv2.imwrite('{}/{}.jpg'.format(savefolder, k), grid_image)
 
         single_params = {
@@ -166,6 +168,7 @@ class PhotometricFitting(object):
             'pose': pose.detach().cpu().numpy(),
             'cam': cam.detach().cpu().numpy(),
             'verts': trans_vertices.detach().cpu().numpy(),
+            'albedos':albedos.detach().cpu().numpy(),
             'tex': tex.detach().cpu().numpy(),
             'lit': lights.detach().cpu().numpy()
         }
@@ -213,6 +216,10 @@ class PhotometricFitting(object):
         util.check_mkdir(savefolder)
         # optimize
         single_params = self.optimize(images, landmarks, image_masks, savefolder)
+        self.render.save_obj(filename=savefile[:-4]+'.obj',
+                             vertices=torch.from_numpy(single_params['verts'][0]).to(self.device),
+                             textures=torch.from_numpy(single_params['albedos'][0]).to(self.device)
+                             )
         np.save(savefile, single_params)
 
 
