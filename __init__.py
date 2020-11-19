@@ -1,0 +1,1 @@
+#photometric optimization init
