@@ -288,6 +288,22 @@ class Renderer(nn.Module):
 
         return images
 
+    def render_normal(self, transformed_vertices, normals):
+        '''
+        -- rendering normal
+        '''
+        batch_size = normals.shape[0]
+
+        # Attributes
+        attributes = util.face_vertices(normals, self.faces.expand(batch_size, -1, -1))
+        # rasterize
+        rendering = self.rasterizer(transformed_vertices, self.faces.expand(batch_size, -1, -1), attributes)
+
+        ####
+        alpha_images = rendering[:, -1, :, :][:, None, :, :].detach()
+        normal_images = rendering[:, :3, :, :]
+        return normal_images
+
     def world2uv(self, vertices):
         '''
         sample vertices from world space to uv space
