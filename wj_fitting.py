@@ -102,7 +102,7 @@ class PhotometricFitting(object):
                 cv2.imwrite('{}/{}.jpg'.format(savefolder, k), grid_image)
 
         # non-rigid fitting of all the parameters with 68 face landmarks, photometric loss and regularization terms.
-        for k in range(200, 5000):
+        for k in range(200, 1000):
             losses = {}
             vertices, landmarks2d, landmarks3d = self.flame(shape_params=shape, expression_params=exp, pose_params=pose)
             trans_vertices = util.batch_orth_proj(vertices, cam)
