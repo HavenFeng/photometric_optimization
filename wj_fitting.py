@@ -8,12 +8,14 @@ import numpy as np
 import datetime
 from face_seg_model import BiSeNet
 import torchvision.transforms as transforms
-from models.FLAME import FLAME, FLAMETex
 from renderer import Renderer
 import util
 from PIL import Image
 from face_alignment.detection import sfd_detector as detector
 from face_alignment.detection import FAN_landmark
+
+sys.path.append('./models/')
+from models.FLAME import FLAME, FLAMETex
 torch.backends.cudnn.benchmark = True
 
 
@@ -280,18 +282,19 @@ def resize_para(ori_frame):
 
 
 if __name__ == '__main__':
-    device_name = "cuda"
+    image_path = str(sys.argv[1])
+    device_name = str(sys.argv[2])
     config = {
         # FLAME
-        'flame_model_path': './data/generic_model.pkl',  # acquire it from FLAME project page
+        'flame_model_path': './model/generic_model.pkl',  # acquire it from FLAME project page
         'flame_lmk_embedding_path': './data/landmark_embedding.npy',
-        'face_seg_model': 'D:/model/FaceModel/face_seg.pth',
+        'face_seg_model': './model/face_seg.pth',
         'seg_class': 19,
         'face_detect_type': "2D",
-        'rect_model_path': "D:/model/s3fd.pth",
+        'rect_model_path': "./model/s3fd.pth",
         'rect_thresh': 0.5,
-        'landmark_model_path': "D:/model/2DFAN4-11f355bf06.pth.tar",
-        'tex_space_path': './data/FLAME_texture.npz',  # acquire it from FLAME project page
+        'landmark_model_path': "./model/2DFAN4-11f355bf06.pth.tar",
+        'tex_space_path': './model/FLAME_texture.npz',  # acquire it from FLAME project page
         'camera_params': 3,
         'shape_params': 300,
         'expression_params': 100,
@@ -312,7 +315,6 @@ if __name__ == '__main__':
         'w_expr_reg': 1e-4,
         'w_pose_reg': 0,
     }
-    image_path = "E:/face/European/yiyangqianxi.png"
     save_name = os.path.split(image_path)[1].split(".")[0] + '.obj'
     config = util.dict2obj(config)
     util.check_mkdir(config.savefolder)

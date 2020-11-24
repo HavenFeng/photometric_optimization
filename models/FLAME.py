@@ -10,7 +10,7 @@ import numpy as np
 import pickle
 import torch.nn.functional as F
 
-from models.lbs import lbs, batch_rodrigues, vertices2landmarks
+from lbs import lbs, batch_rodrigues, vertices2landmarks
 
 
 def to_tensor(array, dtype=torch.float32):

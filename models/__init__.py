@@ -1,2 +1,2 @@
-from models import FLAME
-from models import lbs
+from . import FLAME
+from . import lbs
