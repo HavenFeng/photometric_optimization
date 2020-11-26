@@ -67,6 +67,18 @@ Run this demo with specified FFHQ image name and computing device,
 python photometric_fitting.py 00000 cuda
 ```
 
+Run custom image,
+```
+python wj_fitting.py FFHQ/00000.png cuda
+```
+
+facial landmark [face-alignment](https://github.com/1adrianb/face-alignment)
+
+face segmentation [face-parsing.PyTorch](https://github.com/zllrunning/face-parsing.PyTorch)
+
+related model can be found [Baidu Yun](https://pan.baidu.com/s/1oFZC5IcxkeFa2bgGurShtQ) code：zdnd 
+
+
 Another simple demo to sample the texture space can be found [here](https://github.com/TimoBolkart/TF_FLAME).
 
 
