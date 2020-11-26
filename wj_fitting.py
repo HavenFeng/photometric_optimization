@@ -13,9 +13,11 @@ import util
 from PIL import Image
 from face_alignment.detection import sfd_detector as detector
 from face_alignment.detection import FAN_landmark
+import matplotlib.pyplot as plt
 
 sys.path.append('./models/')
 from models.FLAME import FLAME, FLAMETex
+
 torch.backends.cudnn.benchmark = True
 
 
@@ -35,13 +37,14 @@ class PhotometricFitting(object):
         mesh_file = './data/head_template_mesh.obj'
         self.render = Renderer(self.image_size, obj_filename=mesh_file).to(self.device)
 
-    def optimize(self, images, landmarks, image_masks, savefolder=None):
+    def optimize(self, images, landmarks, image_masks, out, savefolder=None):
         bz = images.shape[0]
         shape = nn.Parameter(torch.zeros(bz, self.config.shape_params).float().to(self.device))
         tex = nn.Parameter(torch.zeros(bz, self.config.tex_params).float().to(self.device))
         exp = nn.Parameter(torch.zeros(bz, self.config.expression_params).float().to(self.device))
         pose = nn.Parameter(torch.zeros(bz, self.config.pose_params).float().to(self.device))
-        cam = torch.zeros(bz, self.config.camera_params); cam[:, 0] = 5.
+        cam = torch.zeros(bz, self.config.camera_params)
+        cam[:, 0] = 5.
         cam = nn.Parameter(cam.float().to(self.device))
         lights = nn.Parameter(torch.zeros(bz, 9, 3).float().to(self.device))
         e_opt = torch.optim.Adam(
@@ -62,11 +65,11 @@ class PhotometricFitting(object):
         for k in range(200):
             losses = {}
             vertices, landmarks2d, landmarks3d = self.flame(shape_params=shape, expression_params=exp, pose_params=pose)
-            trans_vertices = util.batch_orth_proj(vertices, cam);
+            trans_vertices = util.batch_orth_proj(vertices, cam)
             trans_vertices[..., 1:] = - trans_vertices[..., 1:]
-            landmarks2d = util.batch_orth_proj(landmarks2d, cam);
+            landmarks2d = util.batch_orth_proj(landmarks2d, cam)
             landmarks2d[..., 1:] = - landmarks2d[..., 1:]
-            landmarks3d = util.batch_orth_proj(landmarks3d, cam);
+            landmarks3d = util.batch_orth_proj(landmarks3d, cam)
             landmarks3d[..., 1:] = - landmarks3d[..., 1:]
 
             losses['landmark'] = util.l2_distance(landmarks2d[:, 17:, :2], gt_landmark[:, 17:, :2]) * config.w_lmks
@@ -102,7 +105,13 @@ class PhotometricFitting(object):
                 cv2.imwrite('{}/{}.jpg'.format(savefolder, k), grid_image)
 
         # non-rigid fitting of all the parameters with 68 face landmarks, photometric loss and regularization terms.
-        for k in range(200, 1000):
+        all_train_iter = 200
+        all_train_iters = []
+        photometric_loss = []
+        shape_loss = []
+        exp_loss = []
+        for k in range(config.max_iter):
+
             losses = {}
             vertices, landmarks2d, landmarks3d = self.flame(shape_params=shape, expression_params=exp, pose_params=pose)
             trans_vertices = util.batch_orth_proj(vertices, cam)
@@ -121,7 +130,9 @@ class PhotometricFitting(object):
             albedos = self.flametex(tex) / 255.
             ops = self.render(vertices, trans_vertices, albedos, lights)
             predicted_images = ops['images']
-            losses['photometric_texture'] = (image_masks * (ops['images'] - images).abs()).mean() * config.w_pho
+            # losses['photometric_texture'] = (image_masks * (ops['images'] - images).abs()).mean() * config.w_pho
+            losses['photometric_texture'] = F.smooth_l1_loss(image_masks * ops['images'], image_masks * images) * config.w_pho
+
 
             all_loss = 0.
             for key in losses.keys():
@@ -136,10 +147,13 @@ class PhotometricFitting(object):
                 loss_info = loss_info + '{}: {}, '.format(key, float(losses[key]))
 
             if k % 10 == 0:
+                all_train_iter += 10
+                all_train_iters.append(all_train_iter)
+                photometric_loss.append(losses['photometric_texture'])
+                shape_loss.append(losses['shape_reg'])
+                exp_loss.append(losses['expression_reg'])
                 print(loss_info)
 
-            # visualize
-            if k % 10 == 0:
                 grids = {}
                 visind = range(bz)  # [0]
                 grids['images'] = torchvision.utils.make_grid(images[visind]).detach().cpu()
@@ -156,13 +170,11 @@ class PhotometricFitting(object):
                 grids['shape'] = torchvision.utils.make_grid(
                     F.interpolate(shape_images[visind], [224, 224])).detach().float().cpu()
 
-
                 # grids['tex'] = torchvision.utils.make_grid(F.interpolate(albedos[visind], [224, 224])).detach().cpu()
                 grid = torch.cat(list(grids.values()), 1)
                 grid_image = (grid.numpy().transpose(1, 2, 0).copy() * 255)[:, :, [2, 1, 0]]
                 grid_image = np.minimum(np.maximum(grid_image, 0), 255).astype(np.uint8)
-
-                cv2.imwrite('{}/{}.jpg'.format(savefolder, k), grid_image)
+                out.write(grid_image)
 
         single_params = {
             'shape': shape.detach().cpu().numpy(),
@@ -170,13 +182,15 @@ class PhotometricFitting(object):
             'pose': pose.detach().cpu().numpy(),
             'cam': cam.detach().cpu().numpy(),
             'verts': trans_vertices.detach().cpu().numpy(),
-            'albedos':albedos.detach().cpu().numpy(),
+            'albedos': albedos.detach().cpu().numpy(),
             'tex': tex.detach().cpu().numpy(),
             'lit': lights.detach().cpu().numpy()
         }
+        draw_train_process("training", all_train_iters, [photometric_loss, shape_loss, exp_loss],
+                           ['photometric loss', 'shape loss', 'expression loss'])
         return single_params
 
-    def run(self, img, net, rect_detect, landmark_detect, rect_thresh, save_name, savefolder):
+    def run(self, img, net, rect_detect, landmark_detect, rect_thresh, save_name, out, savefolder):
         # The implementation is potentially able to optimize with images(batch_size>1),
         # here we show the example with a single image fitting
         images = []
@@ -188,25 +202,20 @@ class PhotometricFitting(object):
 
             resize_img, landmark = landmark_detect.extract([crop_image, [new_bbox]])
             landmark = landmark[0]
-            # for x, y in landmark:
-            #     cv2.circle(resize_img, (int(x), int(y)), 2, (255, 255, 0))
-            # cv2.imshow("test", resize_img)
-            # cv2.waitKey(0)
-
             landmark[:, 0] = landmark[:, 0] / float(resize_img.shape[1]) * 2 - 1
             landmark[:, 1] = landmark[:, 1] / float(resize_img.shape[0]) * 2 - 1
-            landmarks.append(torch.from_numpy(landmark)[None, :, :].float().to(self.device))
+            landmarks.append(torch.from_numpy(landmark)[None, :, :].double().to(self.device))
 
             image = cv2.resize(crop_image, (config.cropped_size, config.cropped_size)).astype(np.float32) / 255.
             image = image[:, :, [2, 1, 0]].transpose(2, 0, 1)
-            images.append(torch.from_numpy(image[None, :, :, :]).to(self.device))
-            image_mask = face_seg(img, net)
+            images.append(torch.from_numpy(image[None, :, :, :]).double().to(self.device))
+            image_mask = face_seg(crop_image, net)
             image_mask = cv2.resize(image_mask, (config.cropped_size, config.cropped_size))
             image_mask = image_mask[..., None].astype('float32')
             image_mask = image_mask.transpose(2, 0, 1)
             image_mask_bn = np.zeros_like(image_mask)
             image_mask_bn[np.where(image_mask != 0)] = 1.
-            image_masks.append(torch.from_numpy(image_mask_bn[None, :, :, :]).to(self.device))
+            image_masks.append(torch.from_numpy(image_mask_bn[None, :, :, :]).double().to(self.device))
 
             images = torch.cat(images, dim=0)
             images = F.interpolate(images, [self.image_size, self.image_size])
@@ -217,7 +226,7 @@ class PhotometricFitting(object):
             util.check_mkdir(savefolder)
             save_name = os.path.join(savefolder, save_name)
             # optimize
-            single_params = self.optimize(images, landmarks, image_masks, savefolder)
+            single_params = self.optimize(images, landmarks, image_masks, out, savefolder)
             self.render.save_obj(filename=save_name,
                                  vertices=torch.from_numpy(single_params['verts'][0]).to(self.device),
                                  textures=torch.from_numpy(single_params['albedos'][0]).to(self.device)
@@ -257,14 +266,16 @@ def crop_img(ori_image, rect):
     w = (r - l) * 1.2
     h = (b - t) * 1.2
     crop_size = max(w, h)
-    if crop_size > config.cropped_size:
+    cropped_size = config.cropped_size
+    if crop_size > cropped_size:
         crop_ly = int(max(0, center_y - crop_size // 2))
         crop_lx = int(max(0, center_x - crop_size // 2))
         crop_image = ori_image[crop_ly: int(crop_ly + crop_size), crop_lx: int(crop_lx + crop_size), :]
     else:
-        crop_ly = int(max(0, center_y - config.cropped_size // 2))
-        crop_lx = int(max(0, center_x - config.cropped_size // 2))
-        crop_image = ori_image[crop_ly: int(crop_ly + config.cropped_size), crop_lx: int(crop_lx + config.cropped_size), :]
+
+        crop_ly = int(max(0, center_y - cropped_size // 2))
+        crop_lx = int(max(0, center_x - cropped_size // 2))
+        crop_image = ori_image[crop_ly: int(crop_ly + cropped_size), crop_lx: int(crop_lx + cropped_size), :]
     new_rect = [l - crop_lx, t - crop_ly, r - crop_lx, b - crop_ly]
     return crop_image, new_rect
 
@@ -279,6 +290,18 @@ def resize_para(ori_frame):
     h = int(h / input_scale)
     image_info = [w, h, input_scale]
     return image_info
+
+
+def draw_train_process(title, iters, loss, label_loss):
+    plt.title(title, fontsize=24)
+    plt.xlabel("iter", fontsize=20)
+    plt.ylabel("loss", fontsize=20)
+    plt.plot(iters, loss[0], color='red', label=label_loss[0])
+    plt.plot(iters, loss[1], color='green', label=label_loss[1])
+    plt.plot(iters, loss[2], color='blue', label=label_loss[2])
+    plt.legend()
+    plt.grid()
+    plt.show()
 
 
 if __name__ == '__main__':
@@ -301,7 +324,7 @@ if __name__ == '__main__':
         'pose_params': 6,
         'tex_params': 50,
         'use_face_contour': True,
-
+        'max_iter': 2000,
         'cropped_size': 256,
         'batch_size': 1,
         'image_size': 224,
@@ -315,8 +338,11 @@ if __name__ == '__main__':
         'w_expr_reg': 1e-4,
         'w_pose_reg': 0,
     }
-    save_name = os.path.split(image_path)[1].split(".")[0] + '.obj'
     config = util.dict2obj(config)
+    save_name = os.path.split(image_path)[1].split(".")[0] + '.obj'
+    save_video_name = os.path.split(image_path)[1].split(".")[0] + '.avi'
+    out = cv2.VideoWriter(os.path.join(config.savefolder, save_video_name),
+                          cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 16, (config.image_size, config.image_size * 7))
     util.check_mkdir(config.savefolder)
     fitting = PhotometricFitting(config, device=device_name)
     img = cv2.imread(image_path)
@@ -330,4 +356,4 @@ if __name__ == '__main__':
     seg_net.load_state_dict(torch.load(config.face_seg_model))
     seg_net.eval()
 
-    fitting.run(img, seg_net, face_detect, face_landmark, config.rect_thresh, save_name, config.savefolder)
+    fitting.run(img, seg_net, face_detect, face_landmark, config.rect_thresh, save_name, out, config.savefolder)
