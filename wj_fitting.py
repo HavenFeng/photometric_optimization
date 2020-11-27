@@ -270,11 +270,15 @@ def crop_img(ori_image, rect):
     if crop_size > cropped_size:
         crop_ly = int(max(0, center_y - crop_size // 2))
         crop_lx = int(max(0, center_x - crop_size // 2))
+        crop_ly = int(min(ori_image.shape[0] - crop_size, crop_ly))
+        crop_lx = int(min(ori_image.shape[1] - crop_size, crop_lx))
         crop_image = ori_image[crop_ly: int(crop_ly + crop_size), crop_lx: int(crop_lx + crop_size), :]
     else:
 
         crop_ly = int(max(0, center_y - cropped_size // 2))
         crop_lx = int(max(0, center_x - cropped_size // 2))
+        crop_ly = int(min(ori_image.shape[0] - cropped_size, crop_ly))
+        crop_lx = int(min(ori_image.shape[1] - cropped_size, crop_lx))
         crop_image = ori_image[crop_ly: int(crop_ly + cropped_size), crop_lx: int(crop_lx + cropped_size), :]
     new_rect = [l - crop_lx, t - crop_ly, r - crop_lx, b - crop_ly]
     return crop_image, new_rect
