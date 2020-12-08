@@ -76,7 +76,7 @@ facial landmark [face-alignment](https://github.com/1adrianb/face-alignment)
 
 face segmentation [face-parsing.PyTorch](https://github.com/zllrunning/face-parsing.PyTorch)
 
-related model can be found [Baidu Yun](https://pan.baidu.com/s/1oFZC5IcxkeFa2bgGurShtQ) code：zdnd 
+related model can be found [Google Cloud](https://drive.google.com/file/d/1_vyhJUiy3y9DyrtPRkqBq00nkpn766c-/view?usp=sharing) or [Baidu Yun](https://pan.baidu.com/s/1S-CYb3KFk2CI02HU_3jUKA) code：1emq 
 
 
 Another simple demo to sample the texture space can be found [here](https://github.com/TimoBolkart/TF_FLAME).
