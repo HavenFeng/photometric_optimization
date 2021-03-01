@@ -7,13 +7,11 @@ import torch.nn as nn
 import numpy as np
 import datetime
 from face_seg_model import BiSeNet
-import torchvision.transforms as transforms
+
 from renderer import Renderer
 import util
-from PIL import Image
 from face_alignment.detection import sfd_detector as detector
 from face_alignment.detection import FAN_landmark
-import matplotlib.pyplot as plt
 
 sys.path.append('./models/')
 from models.FLAME import FLAME, FLAMETex
@@ -25,6 +23,7 @@ class PhotometricFitting(object):
     def __init__(self, config, device='cuda'):
         self.batch_size = config.batch_size
         self.image_size = config.image_size
+        self.cropped_size = config.cropped_size
         self.config = config
         self.device = device
         #
@@ -37,7 +36,7 @@ class PhotometricFitting(object):
         mesh_file = './data/head_template_mesh.obj'
         self.render = Renderer(self.image_size, obj_filename=mesh_file).to(self.device)
 
-    def optimize(self, images, landmarks, image_masks, video_writer, savefolder=None):
+    def optimize(self, images, landmarks, image_masks, video_writer):
         bz = images.shape[0]
         shape = nn.Parameter(torch.zeros(bz, self.config.shape_params).float().to(self.device))
         tex = nn.Parameter(torch.zeros(bz, self.config.tex_params).float().to(self.device))
@@ -75,7 +74,8 @@ class PhotometricFitting(object):
             ops = self.render(vertices, trans_vertices, albedos, lights)
             predicted_images = ops['images']
             # losses['photometric_texture'] = (image_masks * (ops['images'] - images).abs()).mean() * config.w_pho
-            losses['photometric_texture'] = F.smooth_l1_loss(image_masks * ops['images'], image_masks * images) * config.w_pho
+            losses['photometric_texture'] = F.smooth_l1_loss(image_masks * ops['images'],
+                                                             image_masks * images) * config.w_pho
 
             all_loss = 0.
             for key in losses.keys():
@@ -127,7 +127,8 @@ class PhotometricFitting(object):
             'tex': tex.detach().cpu().numpy(),
             'lit': lights.detach().cpu().numpy()
         }
-        draw_train_process("training", all_train_iters, photometric_loss, 'photometric loss')
+        util.draw_train_process("training", all_train_iters, photometric_loss, 'photometric loss')
+        # np.save("./test_results/model.npy", single_params)
         return single_params
 
     def run(self, img, net, rect_detect, landmark_detect, rect_thresh, save_name, video_writer, savefolder):
@@ -138,7 +139,7 @@ class PhotometricFitting(object):
         image_masks = []
         bbox = rect_detect.extract(img, rect_thresh)
         if len(bbox) > 0:
-            crop_image, new_bbox = crop_img(img, bbox[0])
+            crop_image, new_bbox = util.crop_img(img, bbox[0], config.cropped_size)
 
             # input landmark
             resize_img, landmark = landmark_detect.extract([crop_image, [new_bbox]])
@@ -156,7 +157,7 @@ class PhotometricFitting(object):
             images = F.interpolate(images, [self.image_size, self.image_size])
 
             # face segment mask
-            image_mask = face_seg(crop_image, net)
+            image_mask = util.face_seg(crop_image, net, self.cropped_size)
             image_masks.append(torch.from_numpy(image_mask).double().to(self.device))
             image_masks = torch.cat(image_masks, dim=0)
             image_masks = F.interpolate(image_masks, [self.image_size, self.image_size])
@@ -166,89 +167,12 @@ class PhotometricFitting(object):
             save_file = os.path.join(savefolder, save_name)
 
             # optimize
-            single_params = self.optimize(images, landmarks, image_masks, video_writer, savefolder)
+            single_params = self.optimize(images, landmarks, image_masks, video_writer)
             self.render.save_obj(filename=save_file,
                                  vertices=torch.from_numpy(single_params['verts'][0]).to(self.device),
                                  textures=torch.from_numpy(single_params['albedos'][0]).to(self.device)
                                  )
             np.save(save_file, single_params)
-
-
-def face_seg(img, net):
-    face_area = [1, 2, 3, 4, 5, 6, 10, 11, 12, 13]
-    to_tensor = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-    ])
-    pil_image = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    resize_pil_image = pil_image.resize((512, 512), Image.BILINEAR)
-    tensor_image = to_tensor(resize_pil_image)
-    tensor_image = torch.unsqueeze(tensor_image, 0)
-    tensor_image = tensor_image.cuda()
-    out = net(tensor_image)[0]
-    parsing = out.squeeze(0).cpu().detach().numpy().argmax(0)
-    vis_parsing_anno = parsing.copy().astype(np.uint8)
-    vis_parsing_anno_color = np.zeros((vis_parsing_anno.shape[0], vis_parsing_anno.shape[1]))
-    num_of_class = np.max(vis_parsing_anno)
-
-    for pi in range(1, num_of_class + 1):
-        if pi in face_area:
-            index = np.where(vis_parsing_anno == pi)
-            vis_parsing_anno_color[index[0], index[1]] = 1
-    image_mask = cv2.resize(vis_parsing_anno_color, (config.cropped_size, config.cropped_size))
-    image_mask = image_mask[..., None].astype('float32')
-    image_mask = image_mask.transpose(2, 0, 1)
-    image_mask_bn = np.zeros_like(image_mask)
-    image_mask_bn[np.where(image_mask != 0)] = 1.
-
-    return image_mask_bn[None, :, :, :]
-
-
-def crop_img(ori_image, rect):
-    l, t, r, b = rect
-    center_x = r - (r - l) // 2
-    center_y = b - (b - t) // 2
-    w = (r - l) * 1.2
-    h = (b - t) * 1.2
-    crop_size = max(w, h)
-    cropped_size = config.cropped_size
-    if crop_size > cropped_size:
-        crop_ly = int(max(0, center_y - crop_size // 2))
-        crop_lx = int(max(0, center_x - crop_size // 2))
-        crop_ly = int(min(ori_image.shape[0] - crop_size, crop_ly))
-        crop_lx = int(min(ori_image.shape[1] - crop_size, crop_lx))
-        crop_image = ori_image[crop_ly: int(crop_ly + crop_size), crop_lx: int(crop_lx + crop_size), :]
-    else:
-
-        crop_ly = int(max(0, center_y - cropped_size // 2))
-        crop_lx = int(max(0, center_x - cropped_size // 2))
-        crop_ly = int(min(ori_image.shape[0] - cropped_size, crop_ly))
-        crop_lx = int(min(ori_image.shape[1] - cropped_size, crop_lx))
-        crop_image = ori_image[crop_ly: int(crop_ly + cropped_size), crop_lx: int(crop_lx + cropped_size), :]
-    new_rect = [l - crop_lx, t - crop_ly, r - crop_lx, b - crop_ly]
-    return crop_image, new_rect
-
-
-def resize_para(ori_frame):
-    w, h, c = ori_frame.shape
-    d = max(w, h)
-    scale_to = 640 if d >= 1280 else d / 2
-    scale_to = max(64, scale_to)
-    input_scale = d / scale_to
-    w = int(w / input_scale)
-    h = int(h / input_scale)
-    image_info = [w, h, input_scale]
-    return image_info
-
-
-def draw_train_process(title, iters, loss, label_loss):
-    plt.title(title, fontsize=24)
-    plt.xlabel("iter", fontsize=20)
-    plt.ylabel("loss", fontsize=20)
-    plt.plot(iters, loss, color='red', label=label_loss)
-    plt.legend()
-    plt.grid()
-    plt.show()
 
 
 if __name__ == '__main__':
@@ -289,11 +213,12 @@ if __name__ == '__main__':
     save_name = os.path.split(image_path)[1].split(".")[0] + '.obj'
     save_video_name = os.path.split(image_path)[1].split(".")[0] + '.avi'
     video_writer = cv2.VideoWriter(os.path.join(config.savefolder, save_video_name),
-                          cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 16, (config.image_size, config.image_size * 7))
+                                   cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 16,
+                                   (config.image_size, config.image_size * 7))
     util.check_mkdir(config.savefolder)
     fitting = PhotometricFitting(config, device=device_name)
     img = cv2.imread(image_path)
-    w_h_scale = resize_para(img)
+    w_h_scale = util.resize_para(img)
 
     face_detect = detector.SFDDetector(device_name, config.rect_model_path, w_h_scale)
     face_landmark = FAN_landmark.FANLandmarks(device_name, config.landmark_model_path, config.face_detect_type)
@@ -303,4 +228,5 @@ if __name__ == '__main__':
     seg_net.load_state_dict(torch.load(config.face_seg_model))
     seg_net.eval()
 
-    fitting.run(img, seg_net, face_detect, face_landmark, config.rect_thresh, save_name, video_writer, config.savefolder)
+    fitting.run(img, seg_net, face_detect, face_landmark, config.rect_thresh, save_name, video_writer,
+                config.savefolder)
