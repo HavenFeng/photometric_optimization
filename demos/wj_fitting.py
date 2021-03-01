@@ -6,15 +6,13 @@ import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
 import datetime
-from face_seg_model import BiSeNet
-
-from renderer import Renderer
-import util
+sys.path.append('.')
+from models.FLAME import FLAME, FLAMETex
+from models.face_seg_model import BiSeNet
+from utils.renderer import Renderer
+from utils import util
 from face_alignment.detection import sfd_detector as detector
 from face_alignment.detection import FAN_landmark
-
-sys.path.append('./models/')
-from models.FLAME import FLAME, FLAMETex
 
 torch.backends.cudnn.benchmark = True
 
@@ -26,7 +24,6 @@ class PhotometricFitting(object):
         self.cropped_size = config.cropped_size
         self.config = config
         self.device = device
-        #
         self.flame = FLAME(self.config).to(self.device)
         self.flametex = FLAMETex(self.config).to(self.device)
 

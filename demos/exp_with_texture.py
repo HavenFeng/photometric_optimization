@@ -6,13 +6,12 @@ import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
 import datetime
-from face_seg_model import BiSeNet
-from renderer import Renderer
-import util
+sys.path.append(".")
+from utils.renderer import Renderer
+from utils import util
 from face_alignment.detection import sfd_detector as detector
 from face_alignment.detection import FAN_landmark
-
-sys.path.append('./models/')
+from models.face_seg_model import BiSeNet
 from models.FLAME import FLAME, FLAMETex
 
 torch.backends.cudnn.benchmark = True
@@ -25,7 +24,6 @@ class PhotometricFitting(object):
         self.cropped_size = config.cropped_size
         self.config = config
         self.device = device
-        #
         self.flame = FLAME(self.config).to(self.device)
         self.flametex = FLAMETex(self.config).to(self.device)
 
@@ -36,14 +34,14 @@ class PhotometricFitting(object):
         self.render = Renderer(self.image_size, obj_filename=mesh_file).to(self.device)
 
     def optimize(self, images, landmarks, image_masks, all_param, video_writer, first_flag):
-        shape, tex, exp, pose, cam, lights = all_param
+        shape_para, tex_para, exp_para, pose_para, cam_para, lights_para = all_param
         e_opt = torch.optim.Adam(
-            [shape, exp, pose, cam, tex, lights],
+            [shape_para, exp_para, pose_para, cam_para, tex_para, lights_para],
             lr=self.config.e_lr,
             weight_decay=self.config.e_wd
         )
         d_opt = torch.optim.Adam(
-            [shape, exp, pose, cam, lights],
+            [shape_para, exp_para, pose_para, cam_para],
             lr=self.config.e_lr,
             weight_decay=self.config.e_wd
         )
@@ -56,19 +54,20 @@ class PhotometricFitting(object):
         tmp_predict = torch.squeeze(images)
         for k in range(0, max_iter):
             losses = {}
-            vertices, landmarks2d, landmarks3d = self.flame(shape_params=shape, expression_params=exp, pose_params=pose)
-            trans_vertices = util.batch_orth_proj(vertices, cam)
+            vertices, landmarks2d, landmarks3d = self.flame(shape_params=shape_para, expression_params=exp_para,
+                                                            pose_params=pose_para)
+            trans_vertices = util.batch_orth_proj(vertices, cam_para)
             trans_vertices[..., 1:] = - trans_vertices[..., 1:]
-            landmarks2d = util.batch_orth_proj(landmarks2d, cam)
+            landmarks2d = util.batch_orth_proj(landmarks2d, cam_para)
             landmarks2d[..., 1:] = - landmarks2d[..., 1:]
-            landmarks3d = util.batch_orth_proj(landmarks3d, cam)
+            landmarks3d = util.batch_orth_proj(landmarks3d, cam_para)
             landmarks3d[..., 1:] = - landmarks3d[..., 1:]
 
             losses['landmark'] = util.l2_distance(landmarks2d[:, :, :2], gt_landmark[:, :, :2])
 
             # render
-            albedos = self.flametex(tex) / 255.
-            ops = self.render(vertices, trans_vertices, albedos, lights)
+            albedos = self.flametex(tex_para) / 255.
+            ops = self.render(vertices, trans_vertices, albedos, lights_para)
             tmp_predict = torchvision.utils.make_grid(ops['images'][0].detach().float().cpu())
             # losses['photometric_texture'] = (image_masks * (ops['images'] - images).abs()).mean() * config.w_pho
             if first_flag:
@@ -103,7 +102,7 @@ class PhotometricFitting(object):
         cv2.imshow("tmp_image", combine)
         cv2.waitKey(1)
         video_writer.write(combine)
-        return [shape, tex, exp, pose, cam, lights]
+        return [shape_para, tex_para, exp_para, pose_para, cam_para, lights_para]
 
     def run(self, img, net, rect_detect, landmark_detect, all_param, rect_thresh, out, first_flag):
         # The implementation is potentially able to optimize with images(batch_size>1),

@@ -4,11 +4,13 @@ import cv2
 import torch
 import torch.nn as nn
 import numpy as np
-from face_seg_model import BiSeNet
-import util
+
+sys.path.append('.')
+from models.face_seg_model import BiSeNet
+from utils import util
 from face_alignment.detection import sfd_detector as detector
 from face_alignment.detection import FAN_landmark
-from exp_with_texture import PhotometricFitting
+from demos.exp_with_texture import PhotometricFitting
 
 
 if __name__ == '__main__':
