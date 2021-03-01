@@ -64,12 +64,22 @@ ATTENTION: The pip and conda packages of PyTorch3D have different dependencies, 
 
 Run this demo with specified FFHQ image name and computing device,
 ```
-python photometric_fitting.py 00000 cuda
+python demos/photometric_fitting.py 00000 cuda
 ```
 
 Run custom image,
 ```
-python wj_fitting.py FFHQ/00000.png cuda
+python demos/wj_fitting.py FFHQ/00000.png cuda
+```
+
+Run reconstruct face and driving expression,
+```
+python demos/exp_with_texture.py video.mp4 cuda
+```
+
+Run transfer expression,
+```
+python demos/transfer_exp.py video.mp4 basic_model.npy cuda
 ```
 
 facial landmark [face-alignment](https://github.com/1adrianb/face-alignment)
