@@ -1,4 +1,4 @@
-from face_alignment.detection.models import FAN, ResNetDepth
+from facial_alignment.detection.models import FAN, ResNetDepth
 from .utils import crop, get_preds_fromhm, draw_gaussian
 import torch
 import numpy as np

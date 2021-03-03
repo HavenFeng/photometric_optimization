@@ -11,16 +11,17 @@ sys.path.append('.')
 from models.FLAME import FLAME, FLAMETex
 from utils.renderer import Renderer
 from utils import util
+from utils.config import cfg
 
 torch.backends.cudnn.benchmark = True
 
 
 class PhotometricFitting(object):
-    def __init__(self, config, device='cuda'):
-        self.batch_size = config.batch_size
-        self.image_size = config.image_size
-        self.cropped_size = config.cropped_size
-        self.config = config
+    def __init__(self, device='cuda'):
+        self.batch_size = cfg.batch_size
+        self.image_size = cfg.image_size
+        self.cropped_size = cfg.cropped_size
+        self.config = cfg
         self.device = device
         self.flame = FLAME(self.config).to(self.device)
         self.flametex = FLAMETex(self.config).to(self.device)
@@ -28,27 +29,26 @@ class PhotometricFitting(object):
         self._setup_renderer()
 
     def _setup_renderer(self):
-        mesh_file = './data/head_template_mesh.obj'
-        self.render = Renderer(self.image_size, obj_filename=mesh_file).to(self.device)
+        self.render = Renderer(self.image_size, obj_filename=cfg.mesh_file).to(self.device)
 
     def optimize(self, images, landmarks, image_masks, savefolder=None):
         bz = images.shape[0]
-        shape = nn.Parameter(torch.zeros(bz, self.config.shape_params).float().to(self.device))
-        tex = nn.Parameter(torch.zeros(bz, self.config.tex_params).float().to(self.device))
-        exp = nn.Parameter(torch.zeros(bz, self.config.expression_params).float().to(self.device))
-        pose = nn.Parameter(torch.zeros(bz, self.config.pose_params).float().to(self.device))
-        cam = torch.zeros(bz, self.config.camera_params); cam[:, 0] = 5.
+        shape = nn.Parameter(torch.zeros(bz, cfg.shape_params).float().to(self.device))
+        tex = nn.Parameter(torch.zeros(bz, cfg.tex_params).float().to(self.device))
+        exp = nn.Parameter(torch.zeros(bz, cfg.expression_params).float().to(self.device))
+        pose = nn.Parameter(torch.zeros(bz, cfg.pose_params).float().to(self.device))
+        cam = torch.zeros(bz, cfg.camera_params); cam[:, 0] = 5.
         cam = nn.Parameter(cam.float().to(self.device))
         lights = nn.Parameter(torch.zeros(bz, 9, 3).float().to(self.device))
         e_opt = torch.optim.Adam(
             [shape, exp, pose, cam, tex, lights],
-            lr=self.config.e_lr,
-            weight_decay=self.config.e_wd
+            lr=cfg.e_lr,
+            weight_decay=cfg.e_wd
         )
         e_opt_rigid = torch.optim.Adam(
             [pose, cam],
-            lr=self.config.e_lr,
-            weight_decay=self.config.e_wd
+            lr=cfg.e_lr,
+            weight_decay=cfg.e_wd
         )
 
         gt_landmark = landmarks
@@ -58,14 +58,14 @@ class PhotometricFitting(object):
         for k in range(200):
             losses = {}
             vertices, landmarks2d, landmarks3d = self.flame(shape_params=shape, expression_params=exp, pose_params=pose)
-            trans_vertices = util.batch_orth_proj(vertices, cam);
+            trans_vertices = util.batch_orth_proj(vertices, cam)
             trans_vertices[..., 1:] = - trans_vertices[..., 1:]
-            landmarks2d = util.batch_orth_proj(landmarks2d, cam);
+            landmarks2d = util.batch_orth_proj(landmarks2d, cam)
             landmarks2d[..., 1:] = - landmarks2d[..., 1:]
-            landmarks3d = util.batch_orth_proj(landmarks3d, cam);
+            landmarks3d = util.batch_orth_proj(landmarks3d, cam)
             landmarks3d[..., 1:] = - landmarks3d[..., 1:]
 
-            losses['landmark'] = util.l2_distance(landmarks2d[:, 17:, :2], gt_landmark[:, 17:, :2]) * config.w_lmks
+            losses['landmark'] = util.l2_distance(landmarks2d[:, 17:, :2], gt_landmark[:, 17:, :2]) * cfg.w_lmks
 
             all_loss = 0.
             for key in losses.keys():
@@ -101,23 +101,23 @@ class PhotometricFitting(object):
         for k in range(200, 1000):
             losses = {}
             vertices, landmarks2d, landmarks3d = self.flame(shape_params=shape, expression_params=exp, pose_params=pose)
-            trans_vertices = util.batch_orth_proj(vertices, cam);
+            trans_vertices = util.batch_orth_proj(vertices, cam)
             trans_vertices[..., 1:] = - trans_vertices[..., 1:]
-            landmarks2d = util.batch_orth_proj(landmarks2d, cam);
+            landmarks2d = util.batch_orth_proj(landmarks2d, cam)
             landmarks2d[..., 1:] = - landmarks2d[..., 1:]
-            landmarks3d = util.batch_orth_proj(landmarks3d, cam);
+            landmarks3d = util.batch_orth_proj(landmarks3d, cam)
             landmarks3d[..., 1:] = - landmarks3d[..., 1:]
 
-            losses['landmark'] = util.l2_distance(landmarks2d[:, :, :2], gt_landmark[:, :, :2]) * config.w_lmks
-            losses['shape_reg'] = (torch.sum(shape ** 2) / 2) * config.w_shape_reg  # *1e-4
-            losses['expression_reg'] = (torch.sum(exp ** 2) / 2) * config.w_expr_reg  # *1e-4
-            losses['pose_reg'] = (torch.sum(pose ** 2) / 2) * config.w_pose_reg
+            losses['landmark'] = util.l2_distance(landmarks2d[:, :, :2], gt_landmark[:, :, :2]) * cfg.w_lmks
+            losses['shape_reg'] = (torch.sum(shape ** 2) / 2) * cfg.w_shape_reg  # *1e-4
+            losses['expression_reg'] = (torch.sum(exp ** 2) / 2) * cfg.w_expr_reg  # *1e-4
+            losses['pose_reg'] = (torch.sum(pose ** 2) / 2) * cfg.w_pose_reg
 
             ## render
             albedos = self.flametex(tex) / 255.
             ops = self.render(vertices, trans_vertices, albedos, lights)
             predicted_images = ops['images']
-            losses['photometric_texture'] = (image_masks * (ops['images'] - images).abs()).mean() * config.w_pho
+            losses['photometric_texture'] = (image_masks * (ops['images'] - images).abs()).mean() * cfg.w_pho
 
             all_loss = 0.
             for key in losses.keys():
@@ -180,14 +180,14 @@ class PhotometricFitting(object):
         image_masks = []
 
         image_name = os.path.basename(imagepath)[:-4]
-        savefile = os.path.sep.join([self.config.savefolder, image_name + '.npy'])
+        savefile = os.path.sep.join([cfg.save_folder, image_name + '.npy'])
 
         # photometric optimization is sensitive to the hair or glass occlusions,
         # therefore we use a face segmentation network to mask the skin region out.
         image_mask_folder = './FFHQ_seg/'
         image_mask_path = os.path.sep.join([image_mask_folder, image_name + '.npy'])
 
-        image = cv2.resize(cv2.imread(imagepath), (config.cropped_size, config.cropped_size)).astype(np.float32) / 255.
+        image = cv2.resize(cv2.imread(imagepath), (cfg.cropped_size, cfg.cropped_size)).astype(np.float32) / 255.
         image = image[:, :, [2, 1, 0]].transpose(2, 0, 1)
         images.append(torch.from_numpy(image[None, :, :, :]).to(self.device))
 
@@ -204,12 +204,12 @@ class PhotometricFitting(object):
         landmarks.append(torch.from_numpy(landmark)[None, :, :].float().to(self.device))
 
         images = torch.cat(images, dim=0)
-        images = F.interpolate(images, [self.image_size, self.image_size])
+        images = F.interpolate(images, [cfg.image_size, cfg.image_size])
         image_masks = torch.cat(image_masks, dim=0)
-        image_masks = F.interpolate(image_masks, [self.image_size, self.image_size])
+        image_masks = F.interpolate(image_masks, [cfg.image_size, cfg.image_size])
 
         landmarks = torch.cat(landmarks, dim=0)
-        savefolder = os.path.sep.join([self.config.savefolder, image_name])
+        savefolder = os.path.sep.join([cfg.save_folder, image_name])
 
         util.check_mkdir(savefolder)
         # optimize
@@ -224,37 +224,10 @@ class PhotometricFitting(object):
 if __name__ == '__main__':
     image_name = str(sys.argv[1])
     device_name = str(sys.argv[2])
-    config = {
-        # FLAME
-        'flame_model_path': './model/generic_model.pkl',  # acquire it from FLAME project page
-        'flame_lmk_embedding_path': './data/landmark_embedding.npy',
-        'tex_space_path': './model/FLAME_texture.npz',  # acquire it from FLAME project page
-        'camera_params': 3,
-        'shape_params': 100,
-        'expression_params': 50,
-        'pose_params': 6,
-        'tex_params': 50,
-        'use_face_contour': True,
+    util.check_mkdir(cfg.save_folder)
 
-        'cropped_size': 256,
-        'batch_size': 1,
-        'image_size': 224,
-        'e_lr': 0.005,
-        'e_wd': 0.0001,
-        'savefolder': './test_results/',
-        # weights of losses and reg terms
-        'w_pho': 8,
-        'w_lmks': 1,
-        'w_shape_reg': 1e-4,
-        'w_expr_reg': 1e-4,
-        'w_pose_reg': 0,
-    }
-
-    config = util.dict2obj(config)
-    util.check_mkdir(config.savefolder)
-
-    config.batch_size = 1
-    fitting = PhotometricFitting(config, device=device_name)
+    cfg.batch_size = 1
+    fitting = PhotometricFitting(device=device_name)
 
     input_folder = './FFHQ'
 

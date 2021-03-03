@@ -7,20 +7,17 @@ import torch
 
 
 class SFDDetector:
-    def __init__(self, device, model_path, image_info):
+    def __init__(self, device, model_path):
         # Initialise the face detector
         model_weights = torch.load(model_path)
         torch.backends.cudnn.benchmark = True
-
-        self.w, self.h, self.input_scale = image_info
         self.device = device
         self.face_detector = s3fd().to(self.device)
         self.face_detector.load_state_dict(model_weights)
         self.face_detector.eval()
 
     def pre_process_frame(self, frame):
-        img = cv2.resize(frame, (self.h, self.w))
-        img = img[..., ::-1]
+        img = frame[..., ::-1]
         img = img - np.array([104, 117, 123])
         img = img.transpose(2, 0, 1)
         img = img.reshape((1,) + img.shape)
@@ -60,7 +57,7 @@ class SFDDetector:
             # restore the rect points
             detected_faces = []
             for ltrb in bboxlist:
-                l, t, r, b, _ = [x * self.input_scale for x in ltrb]
+                l, t, r, b, _ = ltrb
                 bt = b - t
                 if min(r - l, bt) < 40:
                     continue
@@ -68,8 +65,4 @@ class SFDDetector:
                 detected_faces.append((l, t, r, b))
         else:
             return []
-        # for box in detected_faces:
-        #     box = [int(i) for i in box]
-        #     x, y, x2, y2 = box
-        #     cv2.rectangle(frame, (x, y), (x2, y2), (0, 255, 255))
         return detected_faces

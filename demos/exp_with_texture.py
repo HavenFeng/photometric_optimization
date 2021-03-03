@@ -9,8 +9,9 @@ import datetime
 sys.path.append(".")
 from utils.renderer import Renderer
 from utils import util
-from face_alignment.detection import sfd_detector as detector
-from face_alignment.detection import FAN_landmark
+from utils.config import cfg
+from facial_alignment.detection import sfd_detector as detector
+from facial_alignment.detection import FAN_landmark
 from models.face_seg_model import BiSeNet
 from models.FLAME import FLAME, FLAMETex
 
@@ -18,11 +19,8 @@ torch.backends.cudnn.benchmark = True
 
 
 class PhotometricFitting(object):
-    def __init__(self, config, device='cuda'):
-        self.batch_size = config.batch_size
-        self.image_size = config.image_size
-        self.cropped_size = config.cropped_size
-        self.config = config
+    def __init__(self, device='cuda'):
+        self.config = cfg
         self.device = device
         self.flame = FLAME(self.config).to(self.device)
         self.flametex = FLAMETex(self.config).to(self.device)
@@ -30,26 +28,25 @@ class PhotometricFitting(object):
         self._setup_renderer()
 
     def _setup_renderer(self):
-        mesh_file = './data/head_template_mesh.obj'
-        self.render = Renderer(self.image_size, obj_filename=mesh_file).to(self.device)
+        self.render = Renderer(cfg.image_size, obj_filename=cfg.mesh_file).to(self.device)
 
     def optimize(self, images, landmarks, image_masks, all_param, video_writer, first_flag):
         shape_para, tex_para, exp_para, pose_para, cam_para, lights_para = all_param
         e_opt = torch.optim.Adam(
             [shape_para, exp_para, pose_para, cam_para, tex_para, lights_para],
-            lr=self.config.e_lr,
-            weight_decay=self.config.e_wd
+            lr=cfg.e_lr,
+            weight_decay=cfg.e_wd
         )
         d_opt = torch.optim.Adam(
             [shape_para, exp_para, pose_para, cam_para],
-            lr=self.config.e_lr,
-            weight_decay=self.config.e_wd
+            lr=cfg.e_lr,
+            weight_decay=cfg.e_wd
         )
 
         gt_landmark = landmarks
         max_iter = 50
         if first_flag:
-            max_iter = self.config.max_iter
+            max_iter = cfg.max_iter
 
         tmp_predict = torch.squeeze(images)
         for k in range(0, max_iter):
@@ -72,7 +69,7 @@ class PhotometricFitting(object):
             # losses['photometric_texture'] = (image_masks * (ops['images'] - images).abs()).mean() * config.w_pho
             if first_flag:
                 losses['photometric_texture'] = F.smooth_l1_loss(image_masks * ops['images'],
-                                                                 image_masks * images) * self.config.w_pho
+                                                                 image_masks * images) * cfg.w_pho
 
             all_loss = 0.
             for key in losses.keys():
@@ -112,7 +109,7 @@ class PhotometricFitting(object):
         image_masks = []
         bbox = rect_detect.extract(img, rect_thresh)
         if len(bbox) > 0:
-            crop_image, new_bbox = util.crop_img(img, bbox[0], self.cropped_size)
+            crop_image, new_bbox = util.crop_img(img, bbox[0], cfg.cropped_size)
 
             resize_img, landmark = landmark_detect.extract([crop_image, [new_bbox]])
             landmark = landmark[0]
@@ -121,16 +118,16 @@ class PhotometricFitting(object):
             landmarks.append(torch.from_numpy(landmark)[None, :, :].double().to(self.device))
             landmarks = torch.cat(landmarks, dim=0)
 
-            image = cv2.resize(crop_image, (self.cropped_size, self.cropped_size)).astype(np.float32) / 255.
+            image = cv2.resize(crop_image, (cfg.cropped_size, cfg.cropped_size)).astype(np.float32) / 255.
             image = image[:, :, ::-1].transpose(2, 0, 1).copy()
             images.append(torch.from_numpy(image[None, :, :, :]).double().to(self.device))
             images = torch.cat(images, dim=0)
-            images = F.interpolate(images, [self.image_size, self.image_size])
+            images = F.interpolate(images, [cfg.image_size, cfg.image_size])
 
-            image_mask = util.face_seg(crop_image, net, self.cropped_size)
+            image_mask = util.face_seg(crop_image, net, cfg.cropped_size)
             image_masks.append(torch.from_numpy(image_mask).double().to(self.device))
             image_masks = torch.cat(image_masks, dim=0)
-            image_masks = F.interpolate(image_masks, [self.image_size, self.image_size])
+            image_masks = F.interpolate(image_masks, [cfg.image_size, cfg.image_size])
 
             single_params = self.optimize(images, landmarks, image_masks, all_param, out, first_flag)
             return single_params
@@ -139,67 +136,35 @@ class PhotometricFitting(object):
 if __name__ == '__main__':
     video_path = str(sys.argv[1])
     device_name = str(sys.argv[2])
-    config = {
-        # FLAME
-        'flame_model_path': './model/generic_model.pkl',  # acquire it from FLAME project page
-        'flame_lmk_embedding_path': './data/landmark_embedding.npy',
-        'face_seg_model': './model/face_seg.pth',
-        'seg_class': 19,
-        'face_detect_type': "2D",
-        'rect_model_path': "./model/s3fd.pth",
-        'rect_thresh': 0.5,
-        'landmark_model_path': "./model/2DFAN4-11f355bf06.pth.tar",
-        'tex_space_path': './model/FLAME_texture.npz',  # acquire it from FLAME project page
-        'camera_params': 3,
-        'shape_params': 300,
-        'expression_params': 100,
-        'pose_params': 6,
-        'tex_params': 50,
-        'use_face_contour': True,
-        'max_iter': 2000,
-        'cropped_size': 256,
-        'batch_size': 1,
-        'image_size': 224,
-        'e_lr': 0.005,
-        'e_wd': 0.0001,
-        'savefolder': './test_results/',
-        # weights of losses and reg terms
-        'w_pho': 64,
-        'w_lmks': 1,
-        'w_shape_reg': 1e-4,
-        'w_expr_reg': 1e-4,
-        'w_pose_reg': 0,
-    }
-    config = util.dict2obj(config)
-    util.check_mkdir(config.savefolder)
-    fitting = PhotometricFitting(config, device=device_name)
+    util.check_mkdir(cfg.save_folder)
+    fitting = PhotometricFitting(device=device_name)
     save_video_name = os.path.split(video_path)[1].split(".")[0] + '.avi'
-    video_writer = cv2.VideoWriter(os.path.join(config.savefolder, save_video_name),
+    video_writer = cv2.VideoWriter(os.path.join(cfg.save_folder, save_video_name),
                                    cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 16,
-                                   (config.image_size * 2, config.image_size))
+                                   (cfg.image_size * 2, cfg.image_size))
     cap = cv2.VideoCapture(video_path)
     ret, frame = cap.read()
 
     if ret:
         w_h_scale = util.resize_para(frame)
-        face_detect = detector.SFDDetector(device_name, config.rect_model_path, w_h_scale)
-        face_landmark = FAN_landmark.FANLandmarks(device_name, config.landmark_model_path, config.face_detect_type)
-        seg_net = BiSeNet(n_classes=config.seg_class)
+        face_detect = detector.SFDDetector(device_name, cfg.rect_model_path)
+        face_landmark = FAN_landmark.FANLandmarks(device_name, cfg.landmark_model_path, cfg.face_detect_type)
+        seg_net = BiSeNet(n_classes=cfg.seg_class)
         seg_net.cuda()
-        seg_net.load_state_dict(torch.load(config.face_seg_model))
+        seg_net.load_state_dict(torch.load(cfg.face_seg_model))
         seg_net.eval()
         first_flag = True
-        shape = nn.Parameter(torch.zeros(config.batch_size, config.shape_params).float().to(device_name))
-        tex = nn.Parameter(torch.zeros(config.batch_size, config.tex_params).float().to(device_name))
-        exp = nn.Parameter(torch.zeros(config.batch_size, config.expression_params).float().to(device_name))
-        pose = nn.Parameter(torch.zeros(config.batch_size, config.pose_params).float().to(device_name))
-        cam = torch.zeros(config.batch_size, config.camera_params)
+        shape = nn.Parameter(torch.zeros(cfg.batch_size, cfg.shape_params).float().to(device_name))
+        tex = nn.Parameter(torch.zeros(cfg.batch_size, cfg.tex_params).float().to(device_name))
+        exp = nn.Parameter(torch.zeros(cfg.batch_size, cfg.expression_params).float().to(device_name))
+        pose = nn.Parameter(torch.zeros(cfg.batch_size, cfg.pose_params).float().to(device_name))
+        cam = torch.zeros(cfg.batch_size, cfg.camera_params)
         cam[:, 0] = 5.
         cam = nn.Parameter(cam.float().to(device_name))
-        lights = nn.Parameter(torch.zeros(config.batch_size, 9, 3).float().to(device_name))
+        lights = nn.Parameter(torch.zeros(cfg.batch_size, 9, 3).float().to(device_name))
         all_params = [shape, tex, exp, pose, cam, lights]
         while ret:
             all_params = fitting.run(frame, seg_net, face_detect, face_landmark, all_params,
-                                     config.rect_thresh, video_writer, first_flag)
+                                     cfg.rect_thresh, video_writer, first_flag)
             first_flag = False
             ret, frame = cap.read()

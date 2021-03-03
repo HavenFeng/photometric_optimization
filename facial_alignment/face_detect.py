@@ -1,5 +1,5 @@
-from face_alignment.detection import sfd_detector as detector
-from face_alignment.detection import FAN_landmark
+from facial_alignment.detection import sfd_detector as detector
+from facial_alignment.detection import FAN_landmark
 import cv2
 import torch
 import socket
