@@ -1,21 +1,11 @@
-import os, sys
-import cv2
+import sys
 import torch
-import torchvision
-import torch.nn.functional as F
-import torch.nn as nn
-import numpy as np
-from pytorch3d.io import load_obj
-
-from glob import glob
-import time
-import datetime
-import imageio
 
 sys.path.append('./models/')
 from FLAME import FLAME, FLAMETex
-from renderer import Renderer
-import util
+from utils.renderer import Renderer
+from utils import util
+
 torch.backends.cudnn.benchmark = True
 
 

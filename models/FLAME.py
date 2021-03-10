@@ -10,7 +10,8 @@ import numpy as np
 import pickle
 import torch.nn.functional as F
 
-from lbs import lbs, batch_rodrigues, vertices2landmarks
+from models.lbs import lbs, batch_rodrigues, vertices2landmarks
+
 
 def to_tensor(array, dtype=torch.float32):
     if 'torch.tensor' not in str(type(array)):
@@ -206,12 +207,12 @@ class FLAME(nn.Module):
         lmk_bary_coords = torch.cat([dyn_lmk_bary_coords, lmk_bary_coords], 1)
 
         landmarks2d = vertices2landmarks(vertices, self.faces_tensor,
-                                       lmk_faces_idx,
-                                       lmk_bary_coords)
+                                         lmk_faces_idx,
+                                         lmk_bary_coords)
         bz = vertices.shape[0]
         landmarks3d = vertices2landmarks(vertices, self.faces_tensor,
-                                       self.full_lmk_faces_idx.repeat(bz, 1),
-                                       self.full_lmk_bary_coords.repeat(bz, 1, 1))
+                                         self.full_lmk_faces_idx.repeat(bz, 1),
+                                         self.full_lmk_bary_coords.repeat(bz, 1, 1))
 
         return vertices, landmarks2d, landmarks3d
 
