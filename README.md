@@ -64,8 +64,30 @@ ATTENTION: The pip and conda packages of PyTorch3D have different dependencies, 
 
 Run this demo with specified FFHQ image name and computing device,
 ```
-python photometric_fitting.py 00000 cuda
+python demos/photometric_fitting.py 00000 cuda
 ```
+
+Run custom image,
+```
+python demos/wj_fitting.py FFHQ/00000.png cuda
+```
+
+Run reconstruct face and driving expression,
+```
+python demos/exp_with_texture.py video.mp4 cuda
+```
+
+Run transfer expression,
+```
+python demos/transfer_exp.py video.mp4 basic_model.npy cuda
+```
+
+facial landmark [face-alignment](https://github.com/1adrianb/face-alignment)
+
+face segmentation [face-parsing.PyTorch](https://github.com/zllrunning/face-parsing.PyTorch)
+
+related model can be found [Google Cloud](https://drive.google.com/file/d/1_vyhJUiy3y9DyrtPRkqBq00nkpn766c-/view?usp=sharing) or [Baidu Yun](https://pan.baidu.com/s/1S-CYb3KFk2CI02HU_3jUKA) code：1emq 
+
 
 Another simple demo to sample the texture space can be found [here](https://github.com/TimoBolkart/TF_FLAME).
 
